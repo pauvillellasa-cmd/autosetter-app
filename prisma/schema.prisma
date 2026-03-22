@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String   @id @default(cuid())
+  instagramId       String   @unique @map("instagram_id")
+  instagramUsername  String   @map("instagram_username")
+  accessToken       String   @map("access_token")
+  pageId            String?  @map("page_id")
+  pageAccessToken   String?  @map("page_access_token")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  config        AgentConfig?
+  conversations Conversation[]
+  documents     Document[]
+
+  @@map("users")
+}
+
+model AgentConfig {
+  id             String  @id @default(cuid())
+  userId         String  @unique @map("user_id")
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Identidad del agente
+  agentName      String  @default("") @map("agent_name")
+  brandName      String  @default("") @map("brand_name")
+  businessDesc   String  @default("") @map("business_desc")
+
+  // Qualifier config
+  qualifierPrompt String @default("") @map("qualifier_prompt")
+  icpDescription  String @default("") @map("icp_description")
+
+  // Booking config
+  video1Url      String  @default("") @map("video_1_url")
+  video2Url      String  @default("") @map("video_2_url")
+  calendlyUrl    String  @default("") @map("calendly_url")
+  bookingPrompt  String  @default("") @map("booking_prompt")
+
+  // Tono
+  toneStyle      String  @default("casual") @map("tone_style")
+  language       String  @default("es")
+
+  // Estado
+  isActive       Boolean @default(false) @map("is_active")
+
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("agent_configs")
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  content   String
+  type      String   @default("knowledge") // knowledge, faq, objections
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("documents")
+}
+
+model Conversation {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  instagramUserId String   @map("instagram_user_id")
+  leadName        String?  @map("lead_name")
+  status          String   @default("active") // active, qualified, disqualified, booked, handover
+  currentAgent    String   @default("qualifier") @map("current_agent") // qualifier, booking
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  messages Message[]
+
+  @@unique([userId, instagramUserId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String   @map("conversation_id")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String   // user, assistant
+  content        String
+  agentAction    String?  @map("agent_action") // NONE, QUALIFIED, DISQUALIFY, etc
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("messages")
+}
